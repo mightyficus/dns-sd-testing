@@ -124,8 +124,8 @@ function Start-DnsSdSoakAds {
         $dnsSdArgs = @('-R', $name, $type, $Domain, $Port, $txt)
         $p = Start-Process -FilePath $exe -ArgumentList $dnsSdArgs -WindowStyle Hidden -PassThru
         $null = $procs.Add($p)
-        if ($PSBoundParameters.Verbose -and ($i % 100 -eq 0)) {
-            Write-Verbose ("Started {0}/{1} ads (last: {2} {3} port {4})" -f $i, $TotalCount, $type, $name, $port)
+        if ($i % 100 -eq 0) {
+            Write-Verbose ("Started {0}/{1} ads (last: {2} {3} port {4})" -f $i,$TotalCount,$type,$name,$port)
         }
         if ($delayMs -gt 0) { Start-Sleep -Milliseconds $delayMs }
     }
@@ -243,7 +243,7 @@ $mix = @(
 
 # Spin up a mixed load (e.g. 1200 total at 40/sec; 50-1000 byte blobs 70% of the time)
 $ads = Start-DnsSdSoakAds -TotalCount 750 -RatePerSec 40 -Domain 'local' `
-        -ServiceMix $mix -BlobMinBytes 50 -BlobMaxBytes 1000 -BlobPercent 70
+        -ServiceMix $mix -BlobMinBytes 50 -BlobMaxBytes 1000 -BlobPercent 70 -Verbose
 
 # Optional: Force replies by browsing a list of types (in hidden windows)
 # Makes the script more "Noisy" by forcing services to broadcast
