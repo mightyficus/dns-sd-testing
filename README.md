@@ -67,3 +67,80 @@ This script uses dns-sd to emulate, broadcast, and browse mDNS objects in order 
 * mDNS is link-local: to test cross-subnet use, involve the mDNS gateway feature or run proxy ads (-P) on both sides and browse from each side
 * Killing thousands of ads at once can create a goodbye broadcast storm, or if forcibly terminated, slow cleanup by TTL expiry - plan cleanup carefully
 * Bonjour may coalesce answers and apply known-answer supression. Good equipment should handle this, but be aware that the traffic isn't "one packet per record"
+
+API call to get most recent AP wireless stats:
+`POST https://<console IP>/proxy/network/api/s/default/stat/report/5minutes.ap`
+Payload is below. I'm assuming that you can pick and choose attrs, which could mean that there are more attributes that can be retrieved, but what is here is fine. This is a site-wide call, but MAC address is also specified in the payload. Finally, start and end time in POSIX milliseconds are specified. The API endpoint is called `5minutes.ap`, but these keys might mean that we can also specify a time range. In the response, index 0 is the earliest stat and index -1 is the most recent stat. This is important to remember: In the payload, `ng` is 2 GHz, `na` is 5 GHz, and `6e` is 6 GHz.
+```json
+{
+  "attrs": [
+    "_id",
+    "time",
+    "duration",
+    "cpu",
+    "mem",
+    "ng-cu_total",
+    "na-cu_total",
+    "6e-cu_total",
+    "ng-cu_interf",
+    "na-cu_interf",
+    "6e-cu_interf",
+    "ng-total_mcast_bcast",
+    "na-total_mcast_bcast",
+    "6e-total_mcast_bcast",
+    "ng-tx_retries",
+    "na-tx_retries",
+    "6e-tx_retries",
+    "ng-wifi_tx_attempts",
+    "na-wifi_tx_attempts",
+    "6e-wifi_tx_attempts",
+    "ng-wifi_tx_dropped",
+    "na-wifi_tx_dropped",
+    "6e-wifi_tx_dropped",
+    "ng-tx_packets",
+    "na-tx_packets",
+    "6e-tx_packets",
+    "ng-rx_packets",
+    "na-rx_packets",
+    "6e-rx_packets",
+    "ng-rx_dropped",
+    "na-rx_dropped",
+    "6e-rx_dropped",
+    "ng-tx_errors",
+    "na-tx_errors",
+    "6e-tx_errors",
+    "ng-tx_dropped",
+    "na-tx_dropped",
+    "6e-tx_dropped",
+    "ng-num_sta",
+    "na-num_sta",
+    "6e-num_sta",
+    "ng-tx_bytes",
+    "na-tx_bytes",
+    "6e-tx_bytes",
+    "ng-rx_bytes",
+    "na-rx_bytes",
+    "6e-rx_bytes",
+    "ng-num_sta",
+    "na-num_sta",
+    "6e-num_sta",
+    "wifi2-client_signal_avg",
+    "wifi2-rx_crypts",
+    "wifi2-rx_errors",
+    "wifi2-rx_frags",
+    "wifi1-client_signal_avg",
+    "wifi1-rx_crypts",
+    "wifi1-rx_errors",
+    "wifi1-rx_frags",
+    "wifi0-client_signal_avg",
+    "wifi0-rx_crypts",
+    "wifi0-rx_errors",
+    "wifi0-rx_frags"
+  ],
+  "macs": [
+    "84:78:48:ca:ae:6d"
+  ],
+  "start": 1755528741635,
+  "end": 1755615141635
+}
+```
