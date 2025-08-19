@@ -362,7 +362,7 @@ $br = Start-DnsSdBrowsers -Types ($mix.Type | Select-Object -Unique)
 $initial            = 0     # Start with some ads if wanted
 $stepCount          = 100   # X more services with each step
 $stepIntervalSec    = 15    # Y seconds between steps
-$maxSteps           = 15    # How many times to ramp up
+$maxSteps           = 20    # How many times to ramp up
 $ratePerSec         = 40    # Within each batch, how fast to add
 
 # Keep track of all processes for cleanup
