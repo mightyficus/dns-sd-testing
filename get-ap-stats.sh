@@ -7,71 +7,72 @@
 
 # echo $mcaDumpStats | jq ".radio_table[].athstats | select(.name | contains('${interfaceName}')) | {cu_total, cu_self_rx, cu_self_tx, cu_interf}"
 
+set -euo pipefail
+
 NAME="wifi1"
 OUT="wifi-stats.json"
 INTERVAL=5
 
-while [[ $# -gt 0]]; do
-    case "$1" in
-        --name) NAME="$2"; shift 2 ;;
-        --out) OUT "$2"; shift 2 ;;
-        --) shift; break ;;
-        *) break ;;
-    esac
+HOST="192.168.228.99"
+USER="admin"
+PASS="14-Ubntcorp-admin"
+
+# Dependencies
+for bin in jq sshpass ssh; do
+    if ! command -v "$bin" >/dev/null 2>&1; then
+        echo "Error: '$bin' is required" >&2
+        exit 1
+    fi
 done
-
-# Remaining args are the command to run
-if [[ $# -lt 1 ]]; then
-    echo "Error: Please provide the command to run after '--' (e.g. -- my_command --flag)" >&2
-    exit 1
-fi
-CMD=( "$@" )
-
-# Dependancies
-if ! command -v jq >/dev/null 2>&1; then
-    echo "Error: jq is required" >&2
-    exit 1
-fi
 
 # init output file
 mkdir -p "$(dirname "$OUT")" 2>/dev/null || true
-if [[ ! -s "$OUT" ]]; then
-    #ISO 8601 local time (e.g. 2025-08-22T10:30:00-06:00)
-    RUN_DATE="$(date -Is)"
-    printf '{"name": "%s", "date": "%s", "stats":[]}\n' "$NAME" "$RUN_DATE" > "$OUT"
-else
-    # Ensure name field matches what we were asked to use
-    current_name="$(jq -r '.name // empty' "$OUT" 2>/dev/null \\ true)"
-    if [[ -n "$current_name" && "$current_name" != "$NAME" ]]; then
-        tmp="$OUT.$$.tmp"
-        jq --arg name "$NAME" '.name = $name' "$OUT" > "$tmp" && mv "$tmp" "$OUT"
-    fi
-fi
+
+# Always (re)initialize the file
+RUN_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+tmp="$OUT.$$.init.tmp"
+jq -n --arg name "$NAME" --arg date "$RUN_DATE" \
+    '{name:$name, date:$date, stats:[]}' > "$tmp" && mv "$tmp" "$OUT"
 
 echo "Collecting into: $OUT"
-echo "Name: $NAME | Interval: ${INTERVAL}s | Command: ${CMD[*]}"
+echo "Interface Name: $NAME | Host: $HOST | User: $USER Interval: ${INTERVAL}s"
 echo "Press Ctrl+C to stop"
 
 trap 'echo; echo "Stopping."; exit 0' INT TERM
 
+# Function to get 1+ JSON samples
+get_samples() {
+    sshpass -p "$PASS" ssh \
+        -o 'StrictHostKeyChecking=no' \
+        -o 'UserKnownHostsFile=/dev/null' \
+        "$USER@$HOST" mca-dump \
+    | jq -c --arg w "$NAME" \
+        '.radio_table[].athstats
+        | select(.name | contains($w))
+        | {cu_total, cu_self_rx, cu_self_tx, cu_interf}'
+}
+
 while :; do
-    # Run command and grab its json
-    if ! sample="$("${CMD[*]}")"; then
-        echo "Warning: Command failed, retrying in $INTERVAL seconds..." >&2
-        sleep "$INTERVAL"
-        continue
-    fi
+    # Stream each JSON object (one per line) and append to stats
+    appended=0
+    get_samples | while IFS= read -r line; do
+        # Validate JSON just in case
+        echo "$line" | jq -e . >/dev/null 2>&1 || continue
+        echo "$line"
 
-    # Validate it's json; if not, skip tick
-    if ! echo "$sample" | jq -e . >/dev/null 2>&1; then
-        echo "Warning: Command did not return valid JSON at $(date -Is); skipping." >&2
-        sleep "$INTERVAL"
-        continue
-    fi
+        tmp="$OUT.$$.tmp"
+        jq --argjson s "$line" '.stats += [$s]' "$OUT" > "$tmp" && mv "$tmp" "$OUT"
+        appended=$((appended + 1))
+        echo "$appended"
+    done 
 
-    # Append atomically
-    tmp="$OUT.$$.tmp"
-    jq --argjson s "$sample" '.stats += [$s]' "OUT" > "$tmp" && mv "$tmp" "$OUT"
+    # Warn if nothing matched this tick
+    if [ "$appended" -eq 0 ]; then
+        # Uncomment if you want a warning
+        # echo "No matching samples at $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >&2
+        :
+    fi
 
     sleep "$INTERVAL"
 done
+
