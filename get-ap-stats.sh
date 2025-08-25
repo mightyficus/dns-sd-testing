@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # interfaceName = "$1"
 # echo "{\n\t\"Name\": \"wifi1\",\n\t\"time\": \"$(date)\",\n\t\"stats\": [" | tee "${interfaceName}_stats.json"
@@ -24,7 +24,8 @@ done
 if [[ $# -lt 1 ]]; then
     echo "Error: Please provide the command to run after '--' (e.g. -- my_command --flag)" >&2
     exit 1
-UserKnownHostsFileCMD=( "$@" )
+fi
+CMD=( "$@" )
 
 # Dependancies
 if ! command -v jq >/dev/null 2>&1; then
